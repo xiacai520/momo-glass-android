@@ -10,6 +10,7 @@ const config: CapacitorConfig = {
   plugins: {
     LocalNotifications: {
       iconColor: '#f472b6',
+      smallIcon: 'ic_stat_momo',
     },
     StatusBar: {
       overlaysWebView: true,

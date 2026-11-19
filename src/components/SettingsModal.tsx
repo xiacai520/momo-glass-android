@@ -1,7 +1,15 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Bell, Camera, Moon, Plus, SlidersHorizontal, Sun, X } from 'lucide-react';
 import { AppSettings, CategoryTag } from '../types';
 import yuningPortrait from '../assets/yuning.webp';
+import {
+  ensureExactAlarm,
+  ensureNotificationPermission,
+  isNative,
+  isNotificationGranted,
+  sendTestNotification,
+  syncNotifications,
+} from '../services/notifier';
 
 interface Props {
   open: boolean;
@@ -36,6 +44,14 @@ export const SettingsModal: React.FC<Props> = ({
   );
   const [avatarError, setAvatarError] = useState('');
   const avatarFileRef = useRef<HTMLInputElement>(null);
+
+  // 打开设置时读取一次真实的通知权限（原生端 window.Notification 不存在，不能靠它判断）
+  useEffect(() => {
+    if (!open) return;
+    if (isNative()) {
+      isNotificationGranted().then((ok) => setNotifStatus(ok ? 'granted' : 'default'));
+    }
+  }, [open]);
 
   if (!open) return null;
 
@@ -73,9 +89,12 @@ export const SettingsModal: React.FC<Props> = ({
   };
 
   const requestNotificationPermission = async () => {
-    if (!('Notification' in window)) return;
-    const perm = await Notification.requestPermission();
-    setNotifStatus(perm);
+    const ok = await ensureNotificationPermission();
+    setNotifStatus(ok ? 'granted' : 'denied');
+    if (ok && isNative()) {
+      await ensureExactAlarm(true); // 未开精确闹钟时跳到系统设置页
+      await syncNotifications();
+    }
   };
 
   return (
@@ -282,6 +301,78 @@ export const SettingsModal: React.FC<Props> = ({
             >
               {notifStatus === 'granted' ? '已开启通知' : '授权通知'}
             </button>
+          </div>
+
+          {isNative() && (
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-slate-600 dark:text-slate-300">
+                退到桌面等 5 秒，确认能收到
+              </span>
+              <button
+                type="button"
+                onClick={() => void sendTestNotification()}
+                className="px-3 py-1 rounded-full text-xs font-medium bg-white/60 dark:bg-white/10 text-slate-700 dark:text-slate-200"
+              >
+                发送测试通知
+              </button>
+            </div>
+          )}
+
+          <div className="space-y-2 pt-2 border-t border-black/5 dark:border-white/10">
+            <span className="text-xs font-semibold text-slate-700 dark:text-slate-200 block">
+              {settings.companionName} 主动来找你
+            </span>
+
+            {(
+              [
+                ['morningCheckin', 'morningTime', '早安提醒'],
+                ['eveningCheckin', 'eveningTime', '晚间回顾'],
+              ] as const
+            ).map(([flag, timeKey, label]) => (
+              <div key={flag} className="flex items-center justify-between gap-2">
+                <label className="text-xs text-slate-600 dark:text-slate-300 flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={settings[flag]}
+                    onChange={(e) =>
+                      onUpdateSettings(
+                        flag === 'morningCheckin'
+                          ? { morningCheckin: e.target.checked }
+                          : { eveningCheckin: e.target.checked }
+                      )
+                    }
+                  />
+                  {label}
+                </label>
+                <input
+                  type="time"
+                  value={settings[timeKey]}
+                  disabled={!settings[flag]}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    if (!v) return;
+                    onUpdateSettings(
+                      timeKey === 'morningTime' ? { morningTime: v } : { eveningTime: v }
+                    );
+                  }}
+                  className="px-2.5 py-1 rounded-xl text-xs bg-white/60 dark:bg-white/10 text-slate-800 dark:text-white focus:outline-none disabled:opacity-40"
+                />
+              </div>
+            ))}
+
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-slate-600 dark:text-slate-300">逾期后追着提醒</span>
+              <select
+                value={settings.overdueNagMinutes}
+                onChange={(e) => onUpdateSettings({ overdueNagMinutes: Number(e.target.value) })}
+                className="px-3 py-1.5 rounded-xl text-xs bg-white/60 dark:bg-white/10 text-slate-800 dark:text-white focus:outline-none"
+              >
+                <option value={0}>不追</option>
+                <option value={15}>每 15 分钟</option>
+                <option value={30}>每 30 分钟</option>
+                <option value={60}>每 1 小时</option>
+              </select>
+            </div>
           </div>
         </div>
 

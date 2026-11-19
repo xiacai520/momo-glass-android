@@ -28,6 +28,14 @@ export interface AppSettings {
   accentColor: string;
   glassOpacity: number;
   remindBeforeMinutes: number;
+  /** 早安提醒：每天固定时间由陪伴角色主动来问「今天要做什么」 */
+  morningCheckin: boolean;
+  morningTime: string;
+  /** 晚间回顾：每天固定时间提醒「今天有什么忘了记 / 还有几件没做」 */
+  eveningCheckin: boolean;
+  eveningTime: string;
+  /** 任务逾期后每隔多少分钟再提醒一次（最多 4 次），0 = 不追提醒 */
+  overdueNagMinutes: number;
 }
 
 export interface DailyStats {
@@ -53,6 +61,8 @@ export interface Routine {
   note?: string;
   cadence: RoutineCadence;
   time?: string;
+  /** 每周要点的星期几，0=周日 … 6=周六（与 Date.getDay 一致） */
+  weekday?: number;
   lastDoneKey?: string;
   createdAt: number;
 }

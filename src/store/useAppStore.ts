@@ -57,6 +57,14 @@ const DEFAULT_TAGS: CategoryTag[] = [
   { id: 'idea', name: '突发灵感', color: '#fbbf24' },
 ];
 
+export const DEFAULT_NOTIFY_SETTINGS = {
+  morningCheckin: true,
+  morningTime: '08:30',
+  eveningCheckin: true,
+  eveningTime: '21:00',
+  overdueNagMinutes: 60,
+};
+
 const newId = (): string =>
   typeof crypto !== 'undefined' && 'randomUUID' in crypto
     ? crypto.randomUUID()
@@ -147,12 +155,13 @@ interface AppState {
   cycleTaskStatus: (id: string) => void;
   setTaskStatus: (id: string, status: TaskStatus) => void;
   deleteTask: (id: string) => void;
+  snoozeTask: (id: string, minutes: number) => void;
   markTaskNotified: (id: string) => void;
 
   addTag: (name: string, color: string) => void;
   removeTag: (id: string) => void;
 
-  addRoutine: (payload: { title: string; note?: string; cadence: RoutineCadence; time?: string }) => void;
+  addRoutine: (payload: { title: string; note?: string; cadence: RoutineCadence; time?: string; weekday?: number }) => void;
   deleteRoutine: (id: string) => void;
   toggleRoutineDone: (id: string) => void;
 
@@ -180,6 +189,7 @@ export const useAppStore = create<AppState>()(
         accentColor: '#f472b6',
         glassOpacity: 0.85,
         remindBeforeMinutes: 15,
+        ...DEFAULT_NOTIFY_SETTINGS,
       },
       stats: {
         todayDate: getTodayStr(),
@@ -302,6 +312,16 @@ export const useAppStore = create<AppState>()(
           tasks: state.tasks.filter((t) => t.id !== id),
         })),
 
+      // 稍后提醒：把截止时间顺延，并重置 notified，让提醒再走一遍
+      snoozeTask: (id, minutes) =>
+        set((state) => ({
+          tasks: state.tasks.map((t) =>
+            t.id === id
+              ? { ...t, dueAt: Date.now() + minutes * 60 * 1000, notified: false }
+              : t
+          ),
+        })),
+
       markTaskNotified: (id) =>
         set((state) => ({
           tasks: state.tasks.map((t) => (t.id === id ? { ...t, notified: true } : t)),
@@ -328,7 +348,7 @@ export const useAppStore = create<AppState>()(
           };
         }),
 
-      addRoutine: ({ title, note, cadence, time }) => {
+      addRoutine: ({ title, note, cadence, time, weekday }) => {
         const trimmed = title.trim();
         if (!trimmed) return;
         set((state) => ({
@@ -340,6 +360,7 @@ export const useAppStore = create<AppState>()(
               note: note?.trim() || undefined,
               cadence,
               time: time || undefined,
+              weekday: cadence === 'weekly' ? weekday : undefined,
               createdAt: Date.now(),
             },
           ],
@@ -431,7 +452,7 @@ export const useAppStore = create<AppState>()(
     }),
     {
       name: 'momo-liquid-glass-storage-v1',
-      version: 2,
+      version: 3,
       migrate: (persistedState, version) => {
         const state = persistedState as {
           settings?: AppSettings;
@@ -449,6 +470,10 @@ export const useAppStore = create<AppState>()(
           state.routines = state.routines ?? SEED_ROUTINES;
           state.memos = state.memos ?? SEED_MEMOS;
           state.expiryItems = state.expiryItems ?? SEED_EXPIRY_ITEMS;
+        }
+        // v2 → v3：新增主动提醒相关设置，老用户补上默认值
+        if (version < 3 && state.settings) {
+          state.settings = { ...DEFAULT_NOTIFY_SETTINGS, ...state.settings };
         }
         return state;
       },

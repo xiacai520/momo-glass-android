@@ -5,7 +5,7 @@ import { isRoutineDone } from '../store/useAppStore';
 
 interface Props {
   routines: Routine[];
-  onAdd: (payload: { title: string; note?: string; cadence: RoutineCadence; time?: string }) => void;
+  onAdd: (payload: { title: string; note?: string; cadence: RoutineCadence; time?: string; weekday?: number }) => void;
   onDelete: (id: string) => void;
   onToggle: (id: string) => void;
 }
@@ -32,6 +32,7 @@ export const RoutinesPage: React.FC<Props> = ({ routines, onAdd, onDelete, onTog
   const [note, setNote] = useState('');
   const [cadence, setCadence] = useState<RoutineCadence>('daily');
   const [time, setTime] = useState('');
+  const [weekday, setWeekday] = useState(1);
 
   const visible = useMemo(
     () =>
@@ -51,10 +52,11 @@ export const RoutinesPage: React.FC<Props> = ({ routines, onAdd, onDelete, onTog
 
   const handleAdd = () => {
     if (!title.trim()) return;
-    onAdd({ title, note: note || undefined, cadence, time: time || undefined });
+    onAdd({ title, note: note || undefined, cadence, time: time || undefined, weekday });
     setTitle('');
     setNote('');
     setTime('');
+    setWeekday(1);
     setCadence('daily');
     setShowForm(false);
   };
@@ -117,6 +119,19 @@ export const RoutinesPage: React.FC<Props> = ({ routines, onAdd, onDelete, onTog
                 {f.label}
               </button>
             ))}
+            {cadence === 'weekly' && (
+              <select
+                value={weekday}
+                onChange={(e) => setWeekday(Number(e.target.value))}
+                className="px-2.5 py-1 rounded-full text-xs bg-white/50 dark:bg-white/5 text-slate-700 dark:text-slate-200 focus:outline-none"
+              >
+                {['周日', '周一', '周二', '周三', '周四', '周五', '周六'].map((d, i) => (
+                  <option key={d} value={i}>
+                    {d}
+                  </option>
+                ))}
+              </select>
+            )}
             <input
               type="time"
               value={time}
@@ -124,6 +139,9 @@ export const RoutinesPage: React.FC<Props> = ({ routines, onAdd, onDelete, onTog
               className="px-2.5 py-1 rounded-full text-xs bg-white/50 dark:bg-white/5 text-slate-700 dark:text-slate-200 focus:outline-none"
             />
           </div>
+          <p className="text-[11px] text-slate-500 dark:text-slate-400 px-1">
+            设了时间就会准时推送提醒；每周 / 每月没设时间默认上午 9 点，流程类不推送。
+          </p>
           <button
             type="button"
             onClick={handleAdd}

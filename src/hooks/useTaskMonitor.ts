@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import { Capacitor } from '@capacitor/core';
-import { LocalNotifications } from '@capacitor/local-notifications';
 import { useAppStore } from '../store/useAppStore';
 
 export function useTaskMonitor() {
@@ -10,16 +9,6 @@ export function useTaskMonitor() {
   const markTaskNotified = useAppStore((s) => s.markTaskNotified);
   const showToast = useAppStore((s) => s.showToast);
   const setMood = useAppStore((s) => s.setMood);
-
-  useEffect(() => {
-    if (Capacitor.isNativePlatform()) {
-      LocalNotifications.checkPermissions().then((res) => {
-        if (res.display !== 'granted') {
-          LocalNotifications.requestPermissions().catch(() => {});
-        }
-      });
-    }
-  }, []);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -49,22 +38,9 @@ export function useTaskMonitor() {
               type: 'urgent',
             });
 
-            if (Capacitor.isNativePlatform()) {
-              try {
-                await LocalNotifications.schedule({
-                  notifications: [
-                    {
-                      id: Math.floor(Math.random() * 2147483647),
-                      title,
-                      body,
-                      schedule: { at: new Date(Date.now() + 200) },
-                    },
-                  ],
-                });
-              } catch {
-                // ignore permission errors
-              }
-            } else if ('Notification' in window && Notification.permission === 'granted') {
+            // 原生端的系统通知已由 services/notifier 提前交给系统闹钟调度，这里只负责应用内弹窗；
+            // 浏览器 / PWA 没有系统闹钟，只能在页面开着时用 Notification 兜底
+            if (!Capacitor.isNativePlatform() && 'Notification' in window && Notification.permission === 'granted') {
               new Notification(title, { body, tag: task.id });
             }
           }

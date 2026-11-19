@@ -4,6 +4,7 @@ import { StatusBar, Style } from '@capacitor/status-bar';
 import { Search, Settings2, Sparkles } from 'lucide-react';
 import { useAppStore } from './store/useAppStore';
 import { useTaskMonitor } from './hooks/useTaskMonitor';
+import { startNotifier } from './services/notifier';
 import { CompanionAvatar } from './components/CompanionAvatar';
 import { DynamicBanner } from './components/DynamicBanner';
 import { StatsStrip } from './components/StatsStrip';
@@ -64,6 +65,22 @@ export default function App() {
   const [hideDone, setHideDone] = useState<boolean>(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [settingsOpen, setSettingsOpen] = useState<boolean>(false);
+
+  // 启动系统级通知调度（建通道、注册按钮、数据变化自动重排）
+  useEffect(() => {
+    let cleanup: (() => void) | undefined;
+    let cancelled = false;
+    startNotifier()
+      .then((fn) => {
+        if (cancelled) fn();
+        else cleanup = fn;
+      })
+      .catch((err) => console.warn('[notifier] start failed', err));
+    return () => {
+      cancelled = true;
+      cleanup?.();
+    };
+  }, []);
 
   useEffect(() => {
     const root = document.documentElement;
