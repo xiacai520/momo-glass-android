@@ -12,16 +12,16 @@ import {
 
 const pad2 = (n: number) => String(n).padStart(2, '0');
 
+const toDateStr = (d: Date) =>
+  `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+
 // 本地日期（YYYY-MM-DD），不用 toISOString，避免 UTC 时区导致 0–8 点算成前一天
-const getTodayStr = () => {
-  const d = new Date();
-  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
-};
+const getTodayStr = () => toDateStr(new Date());
 
 const getYesterdayStr = () => {
   const d = new Date();
   d.setDate(d.getDate() - 1);
-  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+  return toDateStr(d);
 };
 
 const DEFAULT_TAGS: CategoryTag[] = [
@@ -93,11 +93,11 @@ export const useAppStore = create<AppState>()(
       tasks: INITIAL_TASKS,
       tags: DEFAULT_TAGS,
       settings: {
-        companionName: '小桃 Momo',
+        companionName: '予宁',
         customAvatarUrl: '',
         themeMode: 'light',
         accentColor: '#f472b6',
-        glassOpacity: 0.52,
+        glassOpacity: 0.85,
         remindBeforeMinutes: 15,
       },
       stats: {
@@ -148,12 +148,24 @@ export const useAppStore = create<AppState>()(
         const yesterday = getYesterdayStr();
         const prevTask = get().tasks.find((t) => t.id === id);
         const becomingDone = prevTask && prevTask.status !== 'done' && status === 'done';
+        const leavingDone = prevTask && prevTask.status === 'done' && status !== 'done';
 
         set((state) => {
           const nextStats = { ...state.stats };
           if (nextStats.todayDate !== today) {
             nextStats.todayDate = today;
             nextStats.todayCompleted = 0;
+          }
+
+          if (leavingDone) {
+            // 撤销完成要把计数减回去，否则反复点选会把统计刷高
+            nextStats.totalCompleted = Math.max(0, nextStats.totalCompleted - 1);
+            if (
+              prevTask?.completedAt &&
+              toDateStr(new Date(prevTask.completedAt)) === today
+            ) {
+              nextStats.todayCompleted = Math.max(0, nextStats.todayCompleted - 1);
+            }
           }
 
           if (becomingDone) {
@@ -238,6 +250,15 @@ export const useAppStore = create<AppState>()(
     }),
     {
       name: 'momo-liquid-glass-storage-v1',
+      version: 1,
+      migrate: (persistedState) => {
+        // v0 → v1：默认陪伴角色由「小桃 Momo」改为「予宁」；用户自己改过的名字不动
+        const state = persistedState as { settings?: AppSettings } | null;
+        if (state?.settings?.companionName === '小桃 Momo') {
+          state.settings = { ...state.settings, companionName: '予宁' };
+        }
+        return state;
+      },
       partialize: (state) => ({
         tasks: state.tasks,
         tags: state.tags,

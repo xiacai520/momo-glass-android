@@ -1,20 +1,20 @@
 :root {
-  --glass-opacity: 0.48;
-  --glass-blur: 26px;
+  --glass-opacity: 0.85;
+  --glass-blur: 18px;
   --accent-rgb: 244, 114, 182;
 
   --glass-bg-base: 255, 255, 255;
   --glass-edge-dark: rgba(15, 23, 42, 0.09);
-  --glass-specular-top: rgba(255, 255, 255, 0.85);
-  --glass-specular-bottom: rgba(255, 255, 255, 0.28);
+  --glass-specular-top: rgba(255, 255, 255, 0.6);
+  --glass-specular-bottom: rgba(255, 255, 255, 0.18);
   --glass-sheen: linear-gradient(
     135deg,
-    rgba(255, 255, 255, 0.42) 0%,
-    rgba(255, 255, 255, 0.06) 48%,
-    rgba(255, 255, 255, 0.22) 100%
+    rgba(255, 255, 255, 0.22) 0%,
+    rgba(255, 255, 255, 0.03) 48%,
+    rgba(255, 255, 255, 0.1) 100%
   );
-  --glass-shadow: 0 14px 34px -10px rgba(31, 38, 135, 0.12),
-    0 4px 12px -2px rgba(15, 23, 42, 0.04);
+  --glass-shadow: 0 10px 28px -10px rgba(31, 38, 135, 0.07),
+    0 3px 10px -2px rgba(15, 23, 42, 0.03);
 }
 
 .dark {
@@ -36,8 +36,8 @@
   position: relative;
   background-color: rgba(var(--glass-bg-base), var(--glass-opacity));
   background-image: var(--glass-sheen);
-  backdrop-filter: blur(var(--glass-blur)) saturate(185%);
-  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(185%);
+  backdrop-filter: blur(var(--glass-blur)) saturate(150%);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(150%);
   box-shadow:
     0 0 0 0.5px var(--glass-edge-dark),
     inset 0 1px 0.5px var(--glass-specular-top),
@@ -53,8 +53,8 @@
   position: relative;
   background-color: rgba(var(--glass-bg-base), min(0.92, calc(var(--glass-opacity) + 0.22)));
   background-image: var(--glass-sheen);
-  backdrop-filter: blur(calc(var(--glass-blur) + 8px)) saturate(200%);
-  -webkit-backdrop-filter: blur(calc(var(--glass-blur) + 8px)) saturate(200%);
+  backdrop-filter: blur(calc(var(--glass-blur) + 8px)) saturate(160%);
+  -webkit-backdrop-filter: blur(calc(var(--glass-blur) + 8px)) saturate(160%);
   box-shadow:
     0 0 0 0.5px var(--glass-edge-dark),
     inset 0 1.2px 0.8px var(--glass-specular-top),
@@ -64,8 +64,8 @@
 
 .liquid-pill {
   background-color: rgba(var(--glass-bg-base), calc(var(--glass-opacity) * 0.85));
-  backdrop-filter: blur(16px) saturate(170%);
-  -webkit-backdrop-filter: blur(16px) saturate(170%);
+  backdrop-filter: blur(16px) saturate(150%);
+  -webkit-backdrop-filter: blur(16px) saturate(150%);
   box-shadow:
     0 0 0 0.5px var(--glass-edge-dark),
     inset 0 1px 0.5px var(--glass-specular-top);

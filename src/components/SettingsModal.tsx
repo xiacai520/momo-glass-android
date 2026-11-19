@@ -165,14 +165,14 @@ export const SettingsModal: React.FC<Props> = ({
               type="text"
               value={settings.companionName}
               onChange={(e) => onUpdateSettings({ companionName: e.target.value })}
-              placeholder="角色名字（默认：小桃 Momo）"
+              placeholder="角色名字（默认：予宁）"
               className="w-full px-3.5 py-2 rounded-2xl text-xs bg-white/50 dark:bg-white/5 text-slate-800 dark:text-white focus:outline-none"
             />
             <input
               type="url"
               value={settings.customAvatarUrl}
               onChange={(e) => onUpdateSettings({ customAvatarUrl: e.target.value })}
-              placeholder="自定义立绘图片 URL（留空则使用默认粉色长发少女）"
+              placeholder="自定义头像图片 URL（留空则使用默认头像：予宁）"
               className="w-full px-3.5 py-2 rounded-2xl text-xs bg-white/50 dark:bg-white/5 text-slate-800 dark:text-white focus:outline-none"
             />
           </div>
