@@ -44,3 +44,32 @@ export interface InAppToast {
   subtitle?: string;
   type: 'urgent' | 'info' | 'success';
 }
+
+export type RoutineCadence = 'daily' | 'weekly' | 'monthly' | 'process';
+
+export interface Routine {
+  id: string;
+  title: string;
+  note?: string;
+  cadence: RoutineCadence;
+  time?: string;
+  lastDoneKey?: string;
+  createdAt: number;
+}
+
+export interface Memo {
+  id: string;
+  title: string;
+  content: string;
+  category: string;
+  createdAt: number;
+}
+
+export interface ExpiryItem {
+  id: string;
+  name: string;
+  category: string;
+  expiryDate: string;
+  note?: string;
+  createdAt: number;
+}

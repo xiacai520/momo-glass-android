@@ -5,7 +5,11 @@ import {
   CategoryTag,
   CompanionMood,
   DailyStats,
+  ExpiryItem,
   InAppToast,
+  Memo,
+  Routine,
+  RoutineCadence,
   Task,
   TaskStatus,
 } from '../types';
@@ -21,6 +25,28 @@ const getTodayStr = () => toDateStr(new Date());
 const getYesterdayStr = () => {
   const d = new Date();
   d.setDate(d.getDate() - 1);
+  return toDateStr(d);
+};
+
+// 例行要点按周期判断「本期已完成」：每日=当天、每周=本周一所在周、每月=当月、流程=手动勾选不清零
+export const routinePeriodKey = (cadence: RoutineCadence, from = new Date()): string => {
+  if (cadence === 'daily') return toDateStr(from);
+  if (cadence === 'monthly') return `${from.getFullYear()}-${pad2(from.getMonth() + 1)}`;
+  if (cadence === 'weekly') {
+    const d = new Date(from);
+    const day = (d.getDay() + 6) % 7;
+    d.setDate(d.getDate() - day);
+    return `W:${toDateStr(d)}`;
+  }
+  return 'process';
+};
+
+export const isRoutineDone = (routine: Routine): boolean =>
+  routine.lastDoneKey === routinePeriodKey(routine.cadence);
+
+const daysFromNowStr = (days: number) => {
+  const d = new Date();
+  d.setDate(d.getDate() + days);
   return toDateStr(d);
 };
 
@@ -58,6 +84,29 @@ const INITIAL_TASKS: Task[] = [
   },
 ];
 
+const SEED_ROUTINES: Routine[] = [
+  { id: 'seed-r1', title: '起床后看一眼今日安排', cadence: 'daily', time: '08:00', createdAt: Date.now() },
+  { id: 'seed-r2', title: '睡前整理桌面和背包', cadence: 'daily', time: '22:30', createdAt: Date.now() },
+  { id: 'seed-r3', title: '周复盘：花销、课程、待办', cadence: 'weekly', time: '20:00', createdAt: Date.now() },
+  { id: 'seed-r4', title: '月初检查会员订阅和自动续费', cadence: 'monthly', createdAt: Date.now() },
+  { id: 'seed-r5', title: '出门前检查：手机、钥匙、耳机、充电宝', cadence: 'process', createdAt: Date.now() },
+];
+
+const SEED_MEMOS: Memo[] = [
+  {
+    id: 'seed-m1',
+    title: '欢迎使用灵感备忘',
+    content: '灵感、备忘、常用信息都可以放这里，顶部搜索框支持全文检索。这是一条示例，不需要可以删掉。',
+    category: '备忘',
+    createdAt: Date.now(),
+  },
+];
+
+const SEED_EXPIRY_ITEMS: ExpiryItem[] = [
+  { id: 'seed-e1', name: '示例：牛奶', category: '食品', expiryDate: daysFromNowStr(3), note: '示例条目，可删除', createdAt: Date.now() },
+  { id: 'seed-e2', name: '示例：防晒霜', category: '护肤美妆', expiryDate: daysFromNowStr(60), note: '示例条目，可删除', createdAt: Date.now() },
+];
+
 interface AppState {
   tasks: Task[];
   tags: CategoryTag[];
@@ -65,6 +114,9 @@ interface AppState {
   stats: DailyStats;
   mood: CompanionMood;
   toast: InAppToast | null;
+  routines: Routine[];
+  memos: Memo[];
+  expiryItems: ExpiryItem[];
 
   addTask: (payload: {
     title: string;
@@ -80,6 +132,16 @@ interface AppState {
 
   addTag: (name: string, color: string) => void;
   removeTag: (id: string) => void;
+
+  addRoutine: (payload: { title: string; note?: string; cadence: RoutineCadence; time?: string }) => void;
+  deleteRoutine: (id: string) => void;
+  toggleRoutineDone: (id: string) => void;
+
+  addMemo: (payload: { title: string; content: string; category: string }) => void;
+  deleteMemo: (id: string) => void;
+
+  addExpiryItem: (payload: { name: string; category: string; expiryDate: string; note?: string }) => void;
+  deleteExpiryItem: (id: string) => void;
 
   updateSettings: (partial: Partial<AppSettings>) => void;
   setMood: (mood: CompanionMood) => void;
@@ -109,6 +171,9 @@ export const useAppStore = create<AppState>()(
       },
       mood: 'idle',
       toast: null,
+      routines: SEED_ROUTINES,
+      memos: SEED_MEMOS,
+      expiryItems: SEED_EXPIRY_ITEMS,
 
       addTask: ({ title, note, tagId, dueAt, isIdea }) => {
         const trimmed = title.trim();
@@ -229,6 +294,88 @@ export const useAppStore = create<AppState>()(
           tags: state.tags.filter((t) => t.id !== id),
         })),
 
+      addRoutine: ({ title, note, cadence, time }) => {
+        const trimmed = title.trim();
+        if (!trimmed) return;
+        set((state) => ({
+          routines: [
+            ...state.routines,
+            {
+              id: crypto.randomUUID(),
+              title: trimmed,
+              note: note?.trim() || undefined,
+              cadence,
+              time: time || undefined,
+              createdAt: Date.now(),
+            },
+          ],
+        }));
+      },
+
+      deleteRoutine: (id) =>
+        set((state) => ({
+          routines: state.routines.filter((r) => r.id !== id),
+        })),
+
+      toggleRoutineDone: (id) => {
+        const routine = get().routines.find((r) => r.id === id);
+        if (!routine) return;
+        const key = routinePeriodKey(routine.cadence);
+        set((state) => ({
+          routines: state.routines.map((r) =>
+            r.id === id
+              ? { ...r, lastDoneKey: r.lastDoneKey === key ? undefined : key }
+              : r
+          ),
+        }));
+      },
+
+      addMemo: ({ title, content, category }) => {
+        const trimmedTitle = title.trim();
+        const trimmedContent = content.trim();
+        if (!trimmedTitle && !trimmedContent) return;
+        set((state) => ({
+          memos: [
+            {
+              id: crypto.randomUUID(),
+              title: trimmedTitle || '无标题',
+              content: trimmedContent,
+              category,
+              createdAt: Date.now(),
+            },
+            ...state.memos,
+          ],
+        }));
+      },
+
+      deleteMemo: (id) =>
+        set((state) => ({
+          memos: state.memos.filter((m) => m.id !== id),
+        })),
+
+      addExpiryItem: ({ name, category, expiryDate, note }) => {
+        const trimmed = name.trim();
+        if (!trimmed || !expiryDate) return;
+        set((state) => ({
+          expiryItems: [
+            ...state.expiryItems,
+            {
+              id: crypto.randomUUID(),
+              name: trimmed,
+              category,
+              expiryDate,
+              note: note?.trim() || undefined,
+              createdAt: Date.now(),
+            },
+          ],
+        }));
+      },
+
+      deleteExpiryItem: (id) =>
+        set((state) => ({
+          expiryItems: state.expiryItems.filter((i) => i.id !== id),
+        })),
+
       updateSettings: (partial) =>
         set((state) => ({
           settings: { ...state.settings, ...partial },
@@ -250,12 +397,24 @@ export const useAppStore = create<AppState>()(
     }),
     {
       name: 'momo-liquid-glass-storage-v1',
-      version: 1,
-      migrate: (persistedState) => {
+      version: 2,
+      migrate: (persistedState, version) => {
+        const state = persistedState as {
+          settings?: AppSettings;
+          routines?: Routine[];
+          memos?: Memo[];
+          expiryItems?: ExpiryItem[];
+        } | null;
+        if (!state) return state;
         // v0 → v1：默认陪伴角色由「小桃 Momo」改为「予宁」；用户自己改过的名字不动
-        const state = persistedState as { settings?: AppSettings } | null;
-        if (state?.settings?.companionName === '小桃 Momo') {
+        if (version < 1 && state.settings?.companionName === '小桃 Momo') {
           state.settings = { ...state.settings, companionName: '予宁' };
+        }
+        // v1 → v2：新增例行要点、灵感备忘、到期管理三组数据，老用户补上示例数据
+        if (version < 2) {
+          state.routines = state.routines ?? SEED_ROUTINES;
+          state.memos = state.memos ?? SEED_MEMOS;
+          state.expiryItems = state.expiryItems ?? SEED_EXPIRY_ITEMS;
         }
         return state;
       },
@@ -264,6 +423,9 @@ export const useAppStore = create<AppState>()(
         tags: state.tags,
         settings: state.settings,
         stats: state.stats,
+        routines: state.routines,
+        memos: state.memos,
+        expiryItems: state.expiryItems,
       }),
     }
   )
