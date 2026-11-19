@@ -15,10 +15,11 @@ function formatCountdown(dueAt: number, now: number): { text: string; isOverdue:
   const diff = dueAt - now;
   if (diff <= 0) {
     const overdueMin = Math.floor(Math.abs(diff) / 60000);
-    return {
-      text: overdueMin < 1 ? '刚刚到期' : `已超时 ${overdueMin}m`,
-      isOverdue: true,
-    };
+    if (overdueMin < 1) return { text: '刚刚到期', isOverdue: true };
+    if (overdueMin < 60) return { text: `已超时 ${overdueMin}m`, isOverdue: true };
+    const overdueHours = Math.floor(overdueMin / 60);
+    if (overdueHours < 24) return { text: `已超时 ${overdueHours}h`, isOverdue: true };
+    return { text: `已超时 ${Math.floor(overdueHours / 24)}天`, isOverdue: true };
   }
   const totalSec = Math.floor(diff / 1000);
   const hours = Math.floor(totalSec / 3600);

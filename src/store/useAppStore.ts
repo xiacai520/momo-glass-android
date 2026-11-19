@@ -57,6 +57,25 @@ const DEFAULT_TAGS: CategoryTag[] = [
   { id: 'idea', name: '突发灵感', color: '#fbbf24' },
 ];
 
+const newId = (): string =>
+  typeof crypto !== 'undefined' && 'randomUUID' in crypto
+    ? crypto.randomUUID()
+    : `id-${Date.now()}-${Math.floor(Math.random() * 1e9)}`;
+
+const todayAt = (hour: number, minute = 0): number => {
+  const d = new Date();
+  d.setHours(hour, minute, 0, 0);
+  if (d.getTime() <= Date.now()) d.setDate(d.getDate() + 1);
+  return d.getTime();
+};
+
+const tomorrowAt = (hour: number, minute = 0): number => {
+  const d = new Date();
+  d.setDate(d.getDate() + 1);
+  d.setHours(hour, minute, 0, 0);
+  return d.getTime();
+};
+
 const INITIAL_TASKS: Task[] = [
   {
     id: 'demo-1',
@@ -64,7 +83,7 @@ const INITIAL_TASKS: Task[] = [
     note: '财务室 18:00 前截止，别又忘在工位抽屉里啦',
     tagId: 'offwork',
     status: 'doing',
-    dueAt: Date.now() + 12 * 60 * 1000,
+    dueAt: todayAt(18),
     createdAt: Date.now() - 3600 * 1000,
   },
   {
@@ -72,7 +91,7 @@ const INITIAL_TASKS: Task[] = [
     title: '给设计评审群同步新版原型链接',
     tagId: 'work',
     status: 'todo',
-    dueAt: Date.now() + 90 * 60 * 1000,
+    dueAt: tomorrowAt(10),
     createdAt: Date.now() - 1800 * 1000,
   },
   {
@@ -178,11 +197,18 @@ export const useAppStore = create<AppState>()(
       addTask: ({ title, note, tagId, dueAt, isIdea }) => {
         const trimmed = title.trim();
         if (!trimmed) return;
+        // 标签可能已被用户删除，悬空 tagId 一律回退到现存的第一个标签，避免任务在筛选里「消失」
+        const { tags } = get();
+        const requestedTag = tagId || (isIdea ? 'idea' : undefined);
+        const resolvedTagId =
+          requestedTag && tags.some((t) => t.id === requestedTag)
+            ? requestedTag
+            : tags[0]?.id ?? 'work';
         const newTask: Task = {
-          id: crypto.randomUUID(),
+          id: newId(),
           title: trimmed,
           note: note?.trim() || undefined,
-          tagId: tagId || (isIdea ? 'idea' : 'work'),
+          tagId: resolvedTagId,
           status: 'todo',
           dueAt,
           isIdea,
@@ -290,9 +316,17 @@ export const useAppStore = create<AppState>()(
       },
 
       removeTag: (id) =>
-        set((state) => ({
-          tags: state.tags.filter((t) => t.id !== id),
-        })),
+        set((state) => {
+          const tags = state.tags.filter((t) => t.id !== id);
+          const fallback = tags[0]?.id ?? id;
+          return {
+            tags,
+            // 引用了被删标签的任务迁到第一个剩余标签，避免 tagId 悬空
+            tasks: state.tasks.map((t) =>
+              t.tagId === id ? { ...t, tagId: fallback } : t
+            ),
+          };
+        }),
 
       addRoutine: ({ title, note, cadence, time }) => {
         const trimmed = title.trim();
@@ -301,7 +335,7 @@ export const useAppStore = create<AppState>()(
           routines: [
             ...state.routines,
             {
-              id: crypto.randomUUID(),
+              id: newId(),
               title: trimmed,
               note: note?.trim() || undefined,
               cadence,
@@ -337,7 +371,7 @@ export const useAppStore = create<AppState>()(
         set((state) => ({
           memos: [
             {
-              id: crypto.randomUUID(),
+              id: newId(),
               title: trimmedTitle || '无标题',
               content: trimmedContent,
               category,
@@ -360,7 +394,7 @@ export const useAppStore = create<AppState>()(
           expiryItems: [
             ...state.expiryItems,
             {
-              id: crypto.randomUUID(),
+              id: newId(),
               name: trimmed,
               category,
               expiryDate,

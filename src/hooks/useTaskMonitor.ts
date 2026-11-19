@@ -73,6 +73,9 @@ export function useTaskMonitor() {
 
       if (hasUrgent) {
         setMood('urgent');
+      } else if (useAppStore.getState().mood === 'urgent') {
+        // 临期任务都处理完后把心情切回来，否则头像会一直挂在「临期提醒」状态
+        setMood('idle');
       }
     }, 1000);
 
