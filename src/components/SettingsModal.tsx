@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
-import { Bell, Moon, Plus, SlidersHorizontal, Sun, X } from 'lucide-react';
+import React, { useRef, useState } from 'react';
+import { Bell, Camera, Moon, Plus, SlidersHorizontal, Sun, X } from 'lucide-react';
 import { AppSettings, CategoryTag } from '../types';
+import yuningPortrait from '../assets/yuning.webp';
 
 interface Props {
   open: boolean;
@@ -33,8 +34,43 @@ export const SettingsModal: React.FC<Props> = ({
   const [notifStatus, setNotifStatus] = useState<NotificationPermission>(
     typeof Notification !== 'undefined' ? Notification.permission : 'default'
   );
+  const [avatarError, setAvatarError] = useState('');
+  const avatarFileRef = useRef<HTMLInputElement>(null);
 
   if (!open) return null;
+
+  const handleAvatarFile = (file: File | undefined) => {
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      setAvatarError('请选择图片文件');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        const size = 512;
+        const canvas = document.createElement('canvas');
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          setAvatarError('图片处理失败，换一张试试');
+          return;
+        }
+        const scale = Math.max(size / img.width, size / img.height);
+        const w = img.width * scale;
+        const h = img.height * scale;
+        ctx.drawImage(img, (size - w) / 2, (size - h) / 2, w, h);
+        onUpdateSettings({ customAvatarUrl: canvas.toDataURL('image/jpeg', 0.85) });
+        setAvatarError('');
+      };
+      img.onerror = () => setAvatarError('图片读取失败，换一张试试');
+      img.src = String(reader.result);
+    };
+    reader.onerror = () => setAvatarError('图片读取失败，换一张试试');
+    reader.readAsDataURL(file);
+  };
 
   const requestNotificationPermission = async () => {
     if (!('Notification' in window)) return;
@@ -160,22 +196,58 @@ export const SettingsModal: React.FC<Props> = ({
           <span className="text-xs font-semibold text-slate-700 dark:text-slate-200 block">
             陪伴角色设定
           </span>
-          <div className="grid grid-cols-1 gap-2">
-            <input
-              type="text"
-              value={settings.companionName}
-              onChange={(e) => onUpdateSettings({ companionName: e.target.value })}
-              placeholder="角色名字（默认：予宁）"
-              className="w-full px-3.5 py-2 rounded-2xl text-xs bg-white/50 dark:bg-white/5 text-slate-800 dark:text-white focus:outline-none"
+          <p className="text-[10px] text-slate-400 dark:text-slate-500">
+            名字和头像都可以自由修改，分享给朋友用时，让他们换成自己的名字和照片就行。
+          </p>
+          <div className="flex items-center gap-3">
+            <img
+              src={settings.customAvatarUrl || yuningPortrait}
+              alt="当前头像"
+              className="w-12 h-12 rounded-2xl object-cover bg-slate-100 dark:bg-white/10 shrink-0"
             />
+            <div className="flex items-center gap-2 flex-wrap">
+              <button
+                type="button"
+                onClick={() => avatarFileRef.current?.click()}
+                className="px-3 py-1.5 rounded-full text-xs font-medium text-white flex items-center gap-1.5"
+                style={{ backgroundColor: 'rgb(var(--accent-rgb))' }}
+              >
+                <Camera className="w-3.5 h-3.5" /> 上传照片
+              </button>
+              {settings.customAvatarUrl && (
+                <button
+                  type="button"
+                  onClick={() => onUpdateSettings({ customAvatarUrl: '' })}
+                  className="px-3 py-1.5 rounded-full text-xs font-medium bg-black/5 dark:bg-white/10 text-slate-600 dark:text-slate-300"
+                >
+                  恢复默认头像
+                </button>
+              )}
+            </div>
             <input
-              type="url"
-              value={settings.customAvatarUrl}
-              onChange={(e) => onUpdateSettings({ customAvatarUrl: e.target.value })}
-              placeholder="自定义头像图片 URL（留空则使用默认头像：予宁）"
-              className="w-full px-3.5 py-2 rounded-2xl text-xs bg-white/50 dark:bg-white/5 text-slate-800 dark:text-white focus:outline-none"
+              ref={avatarFileRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => {
+                handleAvatarFile(e.target.files?.[0]);
+                e.target.value = '';
+              }}
             />
           </div>
+          {avatarError && (
+            <p className="text-[10px] text-rose-500">{avatarError}</p>
+          )}
+          <p className="text-[10px] text-slate-400 dark:text-slate-500">
+            照片会自动裁成正方形，只保存在这台设备上，不会上传到任何服务器。
+          </p>
+          <input
+            type="text"
+            value={settings.companionName}
+            onChange={(e) => onUpdateSettings({ companionName: e.target.value })}
+            placeholder="角色名字（默认：予宁）"
+            className="w-full px-3.5 py-2 rounded-2xl text-xs bg-white/50 dark:bg-white/5 text-slate-800 dark:text-white focus:outline-none"
+          />
         </div>
 
         <div className="space-y-2.5 pt-2 border-t border-black/5 dark:border-white/10">
