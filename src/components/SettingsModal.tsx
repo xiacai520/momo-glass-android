@@ -98,9 +98,16 @@ export const SettingsModal: React.FC<Props> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-3 sm:p-4 bg-black/25 backdrop-blur-xs">
-      <div className="liquid-glass-elevated animate-glass-enter w-full max-w-md rounded-[32px] p-5 max-h-[88vh] overflow-y-auto space-y-5">
-        <div className="flex items-center justify-between">
+    <div
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-3 sm:p-4 bg-black/25 backdrop-blur-xs"
+      onClick={onClose}
+    >
+      <div
+        className="liquid-glass-elevated animate-glass-enter w-full max-w-md rounded-[32px] max-h-[88vh] flex flex-col overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* 标题栏固定不滚动：关闭按钮永远可见（此前标题栏在滚动区内，往下滚就找不到出口） */}
+        <div className="flex-none flex items-center justify-between px-5 pt-5 pb-3">
           <div className="flex items-center gap-2">
             <SlidersHorizontal
               className="w-4 h-4"
@@ -112,11 +119,14 @@ export const SettingsModal: React.FC<Props> = ({
           </div>
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-full flex items-center justify-center bg-black/5 dark:bg-white/10 text-slate-600 dark:text-slate-300"
+            aria-label="关闭设置"
+            className="w-9 h-9 rounded-full flex items-center justify-center bg-black/5 dark:bg-white/10 text-slate-600 dark:text-slate-300"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
+
+        <div className="flex-1 overflow-y-auto px-5 pb-5 space-y-5">
 
         <div className="rounded-[22px] p-3.5 bg-white/40 dark:bg-white/5 space-y-2">
           <div className="flex items-center justify-between text-xs">
@@ -423,6 +433,17 @@ export const SettingsModal: React.FC<Props> = ({
               <Plus className="w-3.5 h-3.5" /> 添加
             </button>
           </div>
+        </div>
+
+        {/* 内容滚到底也有出口，不依赖滚回顶部找关闭按钮 */}
+        <button
+          type="button"
+          onClick={onClose}
+          className="w-full py-2.5 rounded-2xl text-sm font-semibold text-white"
+          style={{ backgroundColor: 'rgb(var(--accent-rgb))' }}
+        >
+          完成
+        </button>
         </div>
       </div>
     </div>

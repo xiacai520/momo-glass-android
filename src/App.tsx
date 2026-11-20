@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Capacitor } from '@capacitor/core';
+import { App as CapacitorApp } from '@capacitor/app';
 import { StatusBar, Style } from '@capacitor/status-bar';
 import { Search, Settings2, Sparkles } from 'lucide-react';
 import { useAppStore } from './store/useAppStore';
@@ -81,6 +82,24 @@ export default function App() {
       cleanup?.();
     };
   }, []);
+
+  // 安卓实体返回键：设置面板开着时先关面板，没开才退出 App
+  // （没有这个监听时，在面板里按返回键毫无反应，看起来像被困住）
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+    let handle: { remove: () => Promise<void> } | undefined;
+    CapacitorApp.addListener('backButton', () => {
+      if (settingsOpen) setSettingsOpen(false);
+      else void CapacitorApp.exitApp();
+    })
+      .then((h) => {
+        handle = h;
+      })
+      .catch(() => {});
+    return () => {
+      void handle?.remove();
+    };
+  }, [settingsOpen]);
 
   useEffect(() => {
     const root = document.documentElement;
