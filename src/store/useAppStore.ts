@@ -220,7 +220,9 @@ export const useAppStore = create<AppState>()(
           note: note?.trim() || undefined,
           tagId: resolvedTagId,
           status: 'todo',
-          dueAt,
+          // 截止时间已过去的一律丢弃：自定义时间选错、日历给过去的日子加事都会
+          // 造出「一出生就逾期」的任务，立刻弹到点提醒还会排上逾期追提醒
+          dueAt: dueAt && dueAt > Date.now() ? dueAt : undefined,
           isIdea,
           notified: false,
           createdAt: Date.now(),
@@ -439,7 +441,7 @@ export const useAppStore = create<AppState>()(
       setMood: (mood) => set({ mood }),
 
       showToast: (toast) => {
-        const id = String(Date.now());
+        const id = newId();
         set({ toast: { ...toast, id } });
         setTimeout(() => {
           if (get().toast?.id === id) {

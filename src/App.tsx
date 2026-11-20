@@ -154,8 +154,12 @@ export default function App() {
       });
   }, [tasks, activeTagFilter, hideDone, searchQuery]);
 
+  // now 每秒跳一次，用它派生「今天」的日期键：App 跨夜开着时，
+  // 今日安排和页头日期要能在零点自动滚到新一天，而不是停在昨天
+  const dayKey = new Date(now).toDateString();
+
   const todayTasks = useMemo(() => {
-    const end = new Date();
+    const end = new Date(now);
     end.setHours(23, 59, 59, 999);
     return tasks
       .filter(
@@ -166,13 +170,15 @@ export default function App() {
       )
       .sort((a, b) => (a.dueAt ?? 0) - (b.dueAt ?? 0))
       .slice(0, 5);
-  }, [tasks]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tasks, dayKey]);
 
   const todayFormatted = useMemo(() => {
-    const d = new Date();
+    const d = new Date(now);
     const weekdays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
     return `${d.getMonth() + 1}月${d.getDate()}日 · ${weekdays[d.getDay()]}`;
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dayKey]);
 
   return (
     <div

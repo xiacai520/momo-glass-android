@@ -78,8 +78,8 @@ export async function ensureExactAlarm(openSettings: boolean): Promise<boolean> 
 // 构建通知列表
 // ---------------------------------------------------------------------------
 
-function buildNotifications(): LocalNotificationSchema[] {
-  const { tasks, routines, settings } = useAppStore.getState();
+export function buildNotifications(): LocalNotificationSchema[] {
+  const { tasks, routines, settings, expiryItems } = useAppStore.getState();
   const name = settings.companionName || '予宁';
   const now = Date.now();
   const list: LocalNotificationSchema[] = [];
@@ -190,6 +190,33 @@ function buildNotifications(): LocalNotificationSchema[] {
       actionTypeId: 'CHECKIN',
       schedule: { on: { hour, minute }, allowWhileIdle: true },
     });
+  }
+
+  // ---- 4) 效期物品：到期前 3 天 + 到期当天，各在上午 9 点提醒一次 ----
+  // （此前效期页只有打开才看得到预警，记了到期日却从不推送，等于白记一半）
+  for (const item of expiryItems) {
+    const [y, mo, d] = item.expiryDate.split('-').map(Number);
+    if (!y || !mo || !d) continue;
+    const dayOfAt = new Date(y, mo - 1, d, 9, 0, 0, 0).getTime();
+    const soonAt = dayOfAt - 3 * 86400 * 1000;
+    if (soonAt > now + 1000) {
+      list.push({
+        ...base,
+        id: hashId(`expiry:${item.id}:d3`),
+        title: `${name}：有东西快到期啦`,
+        body: `「${item.name}」还有 3 天到期（${item.expiryDate}），记得提前处理～`,
+        schedule: { at: new Date(soonAt), allowWhileIdle: true },
+      });
+    }
+    if (dayOfAt > now + 1000) {
+      list.push({
+        ...base,
+        id: hashId(`expiry:${item.id}:d0`),
+        title: `${name}：有东西今天到期`,
+        body: `「${item.name}」今天到期（${item.expiryDate}），别忘了处理～`,
+        schedule: { at: new Date(dayOfAt), allowWhileIdle: true },
+      });
+    }
   }
 
   return list;
@@ -330,7 +357,8 @@ export async function startNotifier(): Promise<() => void> {
     if (
       state.tasks !== prev.tasks ||
       state.routines !== prev.routines ||
-      state.settings !== prev.settings
+      state.settings !== prev.settings ||
+      state.expiryItems !== prev.expiryItems
     ) {
       scheduleSync();
     }

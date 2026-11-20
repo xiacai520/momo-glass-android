@@ -41,18 +41,25 @@ export const QuickCaptureBar: React.FC<Props> = ({ tags, onAdd }) => {
     return undefined;
   };
 
+  // 选中的标签可能刚在设置里被删掉：提交和渲染都以「还存在的标签」为准，
+  // 否则界面上没有任何标签高亮，任务落到哪个分类也全靠 store 兜底
+  const effectiveTagId = tags.some((t) => t.id === selectedTag)
+    ? selectedTag
+    : tags[0]?.id || 'work';
+
   const handleSubmit = (isIdea = false) => {
     if (!title.trim()) return;
     onAdd({
       title,
       note: expanded ? note : undefined,
-      tagId: isIdea ? 'idea' : selectedTag,
+      tagId: isIdea ? 'idea' : effectiveTagId,
       dueAt: isIdea ? undefined : computeDueAt(),
       isIdea,
     });
     setTitle('');
     setNote('');
     setDuePreset('none');
+    setCustomTime('');
     setExpanded(false);
   };
 
@@ -116,7 +123,7 @@ export const QuickCaptureBar: React.FC<Props> = ({ tags, onAdd }) => {
 
           <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
             {tags.map((tag) => {
-              const active = selectedTag === tag.id;
+              const active = effectiveTagId === tag.id;
               return (
                 <button
                   key={tag.id}
